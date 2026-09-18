@@ -20,19 +20,46 @@ st.write(
 
 st.divider()
 
-# --- Opções de formatação escolhidas pelo usuário ---
+# ============================================================
+# PERFIS DE FORMATAÇÃO PRÉ-DEFINIDOS
+# ============================================================
+PERFIS_FORMATACAO = {
+    "ABNT Padrão": {
+        "fonte": "Times New Roman", "tamanho": 12, "espacamento": 1.5,
+        "margem_superior": 3.0, "margem_inferior": 2.0,
+        "margem_esquerda": 3.0, "margem_direita": 2.0,
+        "recuo_primeira_linha": False,
+    },
+    "TCC / Monografia": {
+        "fonte": "Times New Roman", "tamanho": 12, "espacamento": 1.5,
+        "margem_superior": 3.0, "margem_inferior": 2.0,
+        "margem_esquerda": 3.0, "margem_direita": 2.0,
+        "recuo_primeira_linha": True,
+    },
+    "Personalizado": None,
+}
+
 st.subheader("⚙️ Opções de formatação")
 
-usar_padrao_abnt = st.checkbox("📐 Aplicar padrão ABNT completo (recomendado para trabalhos acadêmicos)")
+perfil_escolhido = st.selectbox("Perfil de formatação", list(PERFIS_FORMATACAO.keys()))
 
-if usar_padrao_abnt:
+if perfil_escolhido != "Personalizado":
+    dados_perfil = PERFIS_FORMATACAO[perfil_escolhido]
     st.info(
-        "Padrão ABNT selecionado: Times New Roman 12, espaçamento 1.5, "
-        "margens 3cm (superior/esquerda) e 2cm (inferior/direita)."
+        f"Perfil **{perfil_escolhido}**: {dados_perfil['fonte']} {dados_perfil['tamanho']}, "
+        f"espaçamento {dados_perfil['espacamento']}, margens "
+        f"{dados_perfil['margem_superior']}-{dados_perfil['margem_direita']}-"
+        f"{dados_perfil['margem_inferior']}-{dados_perfil['margem_esquerda']}cm"
+        + (", com recuo na primeira linha" if dados_perfil["recuo_primeira_linha"] else "")
     )
-    fonte_escolhida = "Times New Roman"
-    tamanho_escolhido = 12
-    espacamento_escolhido = 1.5
+    fonte_escolhida = dados_perfil["fonte"]
+    tamanho_escolhido = dados_perfil["tamanho"]
+    espacamento_escolhido = dados_perfil["espacamento"]
+    margem_sup_escolhida = dados_perfil["margem_superior"]
+    margem_inf_escolhida = dados_perfil["margem_inferior"]
+    margem_esq_escolhida = dados_perfil["margem_esquerda"]
+    margem_dir_escolhida = dados_perfil["margem_direita"]
+    recuo_escolhido = dados_perfil["recuo_primeira_linha"]
 else:
     col1, col2 = st.columns(2)
     with col1:
@@ -41,7 +68,16 @@ else:
         tamanho_escolhido = st.selectbox("Tamanho da fonte", [10, 11, 12, 14], index=2)
 
     espacamento_escolhido = st.selectbox("Espaçamento entre linhas", [1.0, 1.5, 2.0], index=1)
-    margem_escolhida = st.selectbox("Margem (cm)", [2.0, 2.5, 3.0], index=1)
+
+    col3, col4 = st.columns(2)
+    with col3:
+        margem_sup_escolhida = st.selectbox("Margem superior (cm)", [2.0, 2.5, 3.0], index=1)
+        margem_esq_escolhida = st.selectbox("Margem esquerda (cm)", [2.0, 2.5, 3.0], index=1)
+    with col4:
+        margem_inf_escolhida = st.selectbox("Margem inferior (cm)", [2.0, 2.5, 3.0], index=1)
+        margem_dir_escolhida = st.selectbox("Margem direita (cm)", [2.0, 2.5, 3.0], index=1)
+
+    recuo_escolhido = st.checkbox("Aplicar recuo na primeira linha dos parágrafos")
 
 st.divider()
 
@@ -209,13 +245,15 @@ def verificar_citacoes(documento):
 
 
 def formatar_documento(documento, fonte, tamanho, espacamento,
-                        margem_superior, margem_inferior, margem_esquerda, margem_direita):
+                        margem_superior, margem_inferior, margem_esquerda, margem_direita,
+                        aplicar_recuo=False):
     """
     Recebe um objeto Document (python-docx) e aplica:
     - fonte e tamanho em todos os textos (runs)
     - espaçamento entre linhas em todos os parágrafos
     - alinhamento justificado em todos os parágrafos
-    - margens em todas as seções do documento (cada lado pode ter um valor diferente)
+    - margens em todas as seções do documento
+    - recuo na primeira linha (opcional)
     """
     for paragrafo in documento.paragraphs:
         for run in paragrafo.runs:
@@ -226,6 +264,8 @@ def formatar_documento(documento, fonte, tamanho, espacamento,
         paragrafo.paragraph_format.line_spacing = espacamento
         if paragrafo.text.strip() != "":
             paragrafo.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+            if aplicar_recuo:
+                paragrafo.paragraph_format.first_line_indent = Cm(1.25)
 
     for secao in documento.sections:
         secao.top_margin = Cm(margem_superior)
@@ -297,19 +337,13 @@ if arquivo is not None:
 
     st.subheader("✨ Formatação automática")
     if st.button("Formatar documento"):
-        if usar_padrao_abnt:
-            margem_sup, margem_inf, margem_esq, margem_dir = 3.0, 2.0, 3.0, 2.0
-        else:
-            margem_sup, margem_inf, margem_esq, margem_dir = (
-                margem_escolhida, margem_escolhida, margem_escolhida, margem_escolhida
-            )
-
         documento_formatado = formatar_documento(
             documento,
             fonte_escolhida,
             tamanho_escolhido,
             espacamento_escolhido,
-            margem_sup, margem_inf, margem_esq, margem_dir
+            margem_sup_escolhida, margem_inf_escolhida, margem_esq_escolhida, margem_dir_escolhida,
+            aplicar_recuo=recuo_escolhido
         )
 
         buffer_saida = io.BytesIO()
