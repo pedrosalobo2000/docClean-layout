@@ -1,3 +1,4 @@
+184
 import streamlit as st
 from docx import Document
 from docx.shared import Pt, Cm
@@ -41,8 +42,6 @@ else:
 
     espacamento_escolhido = st.selectbox("Espaçamento entre linhas", [1.0, 1.5, 2.0], index=1)
     margem_escolhida = st.selectbox("Margem (cm)", [2.0, 2.5, 3.0], index=1)
-
-st.divider()
 
 # --- Upload do arquivo ---
 arquivo = st.file_uploader("Envie seu arquivo .docx", type=["docx"])
@@ -102,9 +101,11 @@ def verificar_abnt(documento):
 
     # --- 2. Verificar cada parágrafo: fonte, tamanho, espaçamento e alinhamento ---
     for numero, paragrafo in enumerate(documento.paragraphs, start=1):
+        # Pula parágrafos vazios (não têm o que verificar)
         if paragrafo.text.strip() == "":
             continue
 
+        # --- Espaçamento entre linhas ---
         espacamento = paragrafo.paragraph_format.line_spacing
         if espacamento is not None and round(espacamento, 1) != ABNT_ESPACAMENTO:
             problemas.append({
@@ -113,9 +114,14 @@ def verificar_abnt(documento):
                 "mensagem": f"Espaçamento é {espacamento} (ABNT exige {ABNT_ESPACAMENTO})"
             })
 
+        # --- Alinhamento (ABNT exige texto justificado no corpo do trabalho) ---
+                # --- Alinhamento (ABNT exige texto justificado no corpo do trabalho) ---
         try:
             alinhamento = paragrafo.alignment
         except ValueError:
+            # Alguns arquivos .docx (geralmente convertidos de outros formatos)
+            # têm um valor de alinhamento que o python-docx não reconhece.
+            # Nesse caso, tratamos como "não foi possível verificar" e seguimos.
             alinhamento = None
 
         if alinhamento is not None and alinhamento != WD_ALIGN_PARAGRAPH.JUSTIFY:
@@ -125,6 +131,7 @@ def verificar_abnt(documento):
                 "mensagem": "Parágrafo não está justificado"
             })
 
+        # --- Fonte e tamanho (verifica cada trecho de texto do parágrafo) ---
         for run in paragrafo.runs:
             if run.text.strip() == "":
                 continue
@@ -174,7 +181,7 @@ def formatar_documento(documento, fonte, tamanho, espacamento,
         secao.right_margin = Cm(margem_direita)
 
     return documento
-
+    for paragrafo in do
 
 if arquivo is not None:
     st.success(f"Arquivo recebido: {arquivo.name}")
@@ -200,6 +207,7 @@ if arquivo is not None:
 
     st.divider()
 
+    # --- Botão do verificador ABNT ---
     st.subheader("🔍 Verificador de conformidade ABNT")
     if st.button("Verificar conformidade ABNT"):
         problemas = verificar_abnt(documento)
@@ -213,8 +221,9 @@ if arquivo is not None:
 
     st.divider()
 
+    # --- Botão de formatação automática ---
     st.subheader("✨ Formatação automática")
-    if st.button("Formatar documento"):
+        if st.button("Formatar documento"):
         if usar_padrao_abnt:
             margem_sup, margem_inf, margem_esq, margem_dir = 3.0, 2.0, 3.0, 2.0
         else:
@@ -230,18 +239,6 @@ if arquivo is not None:
             margem_sup, margem_inf, margem_esq, margem_dir
         )
 
-        buffer_saida = io.BytesIO()
-        documento_formatado.save(buffer_saida)
-        buffer_saida.seek(0)
-
-        st.success("Documento formatado com sucesso!")
-
-        st.download_button(
-            label="⬇️ Baixar documento formatado",
-            data=buffer_saida,
-            file_name=f"formatado_{arquivo.name}",
-            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        )
-
 else:
     st.warning("Nenhum arquivo enviado ainda.")
+
